@@ -166,6 +166,9 @@ struct ToolCallItem: Equatable, Sendable {
         if status == .interrupted {
             return ToolStatusDisplay(text: "Interrupted", isRunning: false)
         }
+        if status == .error {
+            return ToolStatusDisplay(text: "Failed", isRunning: false)
+        }
         return ToolStatusDisplay.completed(for: name, result: structuredResult)
     }
 

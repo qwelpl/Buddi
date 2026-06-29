@@ -45,7 +45,7 @@ struct ASCIIFullSpriteView: View {
 
     private func spriteLines(tick: Int) -> [String] {
         let eye: BuddyEye
-        switch animator.task {
+        switch animator.effectiveTask {
         case .error: eye = .cross
         case .sleeping: eye = .dot
         default: eye = identity.eye
@@ -60,7 +60,7 @@ struct ASCIIFullSpriteView: View {
     }
 
     private var textColor: Color {
-        if animator.task == .error { return .red }
+        if animator.effectiveTask == .error { return .red }
         return Color(nsColor: identity.rarity.nsColor)
     }
 }

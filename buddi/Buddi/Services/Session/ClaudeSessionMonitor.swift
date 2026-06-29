@@ -59,6 +59,12 @@ class ClaudeSessionMonitor: ObservableObject {
                 if event.event == "PostToolUse", let toolUseId = event.toolUseId {
                     HookSocketServer.shared.cancelPendingPermission(toolUseId: toolUseId)
                 }
+
+                if event.event == "PostToolUseFailure" {
+                    Task { @MainActor in
+                        BuddyManager.shared.animator.flash(.error)
+                    }
+                }
             },
             onPermissionFailure: { sessionId, toolUseId in
                 Task {

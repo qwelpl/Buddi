@@ -13,14 +13,20 @@ final class SpriteAnimator: ObservableObject {
     @Published private(set) var frameString: String = ""
     @Published private(set) var oneLine: String = ""
 
+    /// Base task driven by session phase. A transient `flash` reaction temporarily overrides
+    /// what is rendered, then reverts to this base.
     var task: BuddyTask = .idle {
         didSet {
             guard task != oldValue else { return }
-            tick = 0
-            successCountdown = task == .success ? 5 : 0
-            updateFrame()
-            restartTimer()
+            // While a flash is showing, keep the new base for when the flash ends.
+            if flashCountdown == 0 { applyEffective(task) }
         }
+    }
+
+    /// Show a transient reaction (e.g. `.error`) for a few ticks, then revert to `task`.
+    func flash(_ reaction: BuddyTask, ticks: Int = 5) {
+        flashCountdown = ticks
+        applyEffective(reaction)
     }
 
     var identity: BuddyIdentity {
@@ -29,9 +35,20 @@ final class SpriteAnimator: ObservableObject {
             updateFrame()
         }
     }
+    /// The task actually being rendered (base task, or an active flash reaction).
+    /// Views should read this (not `task`) so transient flashes are visible.
+    private(set) var effectiveTask: BuddyTask = .idle
     private var tick: Int = 0
     private var timer: Timer?
-    private var successCountdown: Int = 0
+    private var flashCountdown: Int = 0
+
+    private func applyEffective(_ newTask: BuddyTask) {
+        guard newTask != effectiveTask else { return }
+        effectiveTask = newTask
+        tick = 0
+        updateFrame()
+        restartTimer()
+    }
 
     init(identity: BuddyIdentity) {
         self.identity = identity
@@ -47,7 +64,7 @@ final class SpriteAnimator: ObservableObject {
 
     private func restartTimer() {
         timer?.invalidate()
-        let interval = intervalForTask(task)
+        let interval = intervalForTask(effectiveTask)
         timer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             self?.onTick()
         }
@@ -59,10 +76,10 @@ final class SpriteAnimator: ObservableObject {
     private func onTick() {
         tick += 1
 
-        if task == .success {
-            successCountdown -= 1
-            if successCountdown <= 0 {
-                task = .idle
+        if flashCountdown > 0 {
+            flashCountdown -= 1
+            if flashCountdown == 0 {
+                applyEffective(task)  // flash ended — revert to the base task
                 return
             }
         }
@@ -72,13 +89,13 @@ final class SpriteAnimator: ObservableObject {
 
     private func updateFrame() {
         frameString = SpriteFrameLogic.frame(
-            for: task,
+            for: effectiveTask,
             tick: tick,
             species: identity.species,
             eye: identity.eye
         )
         oneLine = SpriteFrameLogic.oneLineFace(
-            for: task,
+            for: effectiveTask,
             species: identity.species,
             eye: identity.eye
         )
