@@ -126,9 +126,11 @@ class HookSocketServer {
     private var pendingPermissions: [String: PendingPermission] = [:]
     private let permissionsLock = NSLock()
 
-    /// Cache tool_use_id from PreToolUse to correlate with PermissionRequest
+    /// Cache tool_use_id from PreToolUse to correlate with PermissionRequest.
     /// Key: "sessionId:toolName:serializedInput" -> Queue of tool_use_ids (FIFO)
-    /// PermissionRequest events don't include tool_use_id, so we cache from PreToolUse
+    /// PreToolUse/PostToolUse carry tool_use_id but PermissionRequest does not, so we bridge
+    /// them by content — the only correlation available until upstream adds tool_use_id to
+    /// PermissionRequest (anthropics/claude-code#13938).
     private var toolUseIdCache: [String: [String]] = [:]
     private let cacheLock = NSLock()
 
@@ -511,6 +513,7 @@ class HookSocketServer {
         let response = HookResponse(decision: decision, reason: reason)
         guard let data = try? JSONEncoder().encode(response) else {
             closeClientSocket(pending.clientSocket, cleanupPending: true)
+            permissionFailureHandler?(pending.sessionId, toolUseId)
             return
         }
 
@@ -539,6 +542,7 @@ class HookSocketServer {
             Darwin.close(pending.clientSocket)
         } else {
             closeClientSocket(pending.clientSocket, cleanupPending: true)
+            permissionFailureHandler?(pending.sessionId, toolUseId)
         }
     }
 
