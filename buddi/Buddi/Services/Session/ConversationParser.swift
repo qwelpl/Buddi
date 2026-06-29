@@ -16,6 +16,7 @@ struct ConversationInfo: Equatable {
     let lastToolName: String?  // Tool name if lastMessageRole is "tool"
     let firstUserMessage: String?  // Fallback title when no summary
     let lastUserMessageDate: Date?  // Timestamp of last user message (for stable sorting)
+    var sessionModel: String? = nil  // Model from the most recent assistant message (e.g. "claude-opus-4-8")
 }
 
 actor ConversationParser {
@@ -107,6 +108,7 @@ actor ConversationParser {
         var lastToolName: String?
         var firstUserMessage: String?
         var lastUserMessageDate: Date?
+        var sessionModel: String?
 
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
@@ -139,6 +141,12 @@ actor ConversationParser {
             }
 
             let type = json["type"] as? String
+
+            if sessionModel == nil, type == "assistant",
+               let message = json["message"] as? [String: Any],
+               let model = message["model"] as? String {
+                sessionModel = model
+            }
 
             if lastMessage == nil {
                 if type == "user" || type == "assistant" {
@@ -201,7 +209,8 @@ actor ConversationParser {
             lastMessageRole: lastMessageRole,
             lastToolName: lastToolName,
             firstUserMessage: firstUserMessage,
-            lastUserMessageDate: lastUserMessageDate
+            lastUserMessageDate: lastUserMessageDate,
+            sessionModel: sessionModel
         )
     }
 

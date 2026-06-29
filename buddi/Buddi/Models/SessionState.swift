@@ -174,6 +174,11 @@ struct SessionState: Equatable, Identifiable, Sendable {
         conversationInfo.summary
     }
 
+    /// Claude model for this session (from the transcript's most recent assistant message)
+    var sessionModel: String? {
+        conversationInfo.sessionModel
+    }
+
     /// First user message
     var firstUserMessage: String? {
         conversationInfo.firstUserMessage
