@@ -155,8 +155,15 @@ def main():
 
     # Get process info
     claude_pid = os.getppid()
-    tty = get_tty()
-    cmux_workspace, cmux_surface = get_cmux_surface()
+    # tty/cmux are only consumed when the user sends a message from Buddi (i.e. when the
+    # session is waiting), so skip the ps/cmux subprocess spawns on the per-tool hot path
+    # to keep these hooks fast. They are refreshed on the next waiting-state event.
+    if event in ("PreToolUse", "PostToolUse", "PostToolUseFailure"):
+        tty = None
+        cmux_workspace = cmux_surface = None
+    else:
+        tty = get_tty()
+        cmux_workspace, cmux_surface = get_cmux_surface()
 
     # Build state object
     state = {
@@ -194,6 +201,12 @@ def main():
         tool_use_id_from_event = data.get("tool_use_id")
         if tool_use_id_from_event:
             state["tool_use_id"] = tool_use_id_from_event
+
+    elif event == "PostToolUseFailure":
+        # A tool call failed; Claude will process the error next. Keep the session in
+        # "processing" so the phase doesn't churn — the app flashes a buddy reaction
+        # off the event name.
+        state["status"] = "processing"
 
     elif event == "PermissionRequest":
         # This is where we can control the permission

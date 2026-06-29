@@ -6,6 +6,9 @@
 //
 
 import Foundation
+import os
+
+private let logger = os.Logger(subsystem: "com.splab.buddi", category: "HookInstaller")
 
 struct HookInstaller {
 
@@ -17,18 +20,26 @@ struct HookInstaller {
         let pythonScript = hooksDir.appendingPathComponent("buddi-hook.py")
         let settings = claudeDir.appendingPathComponent("settings.json")
 
-        try? FileManager.default.createDirectory(
-            at: hooksDir,
-            withIntermediateDirectories: true
-        )
+        do {
+            try FileManager.default.createDirectory(
+                at: hooksDir,
+                withIntermediateDirectories: true
+            )
+        } catch {
+            logger.error("Failed to create hooks dir: \(error.localizedDescription, privacy: .public)")
+        }
 
         if let bundled = Bundle.main.url(forResource: "buddi-hook", withExtension: "py") {
-            try? FileManager.default.removeItem(at: pythonScript)
-            try? FileManager.default.copyItem(at: bundled, to: pythonScript)
-            try? FileManager.default.setAttributes(
-                [.posixPermissions: 0o755],
-                ofItemAtPath: pythonScript.path
-            )
+            do {
+                try? FileManager.default.removeItem(at: pythonScript)  // may not exist yet
+                try FileManager.default.copyItem(at: bundled, to: pythonScript)
+                try FileManager.default.setAttributes(
+                    [.posixPermissions: 0o755],
+                    ofItemAtPath: pythonScript.path
+                )
+            } catch {
+                logger.error("Failed to install hook script: \(error.localizedDescription, privacy: .public)")
+            }
         }
 
         updateSettings(at: settings)
@@ -36,8 +47,16 @@ struct HookInstaller {
 
     private static func updateSettings(at settingsURL: URL) {
         var json: [String: Any] = [:]
-        if let data = try? Data(contentsOf: settingsURL),
-           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+        let existingData = (try? Data(contentsOf: settingsURL)) ?? Data()
+        // Only refuse to overwrite a file that actually has content to lose. A missing or
+        // empty/whitespace settings.json should be written fresh, not skipped.
+        let isBlank = String(data: existingData, encoding: .utf8)?
+            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? false
+        if !isBlank {
+            guard let existing = try? JSONSerialization.jsonObject(with: existingData) as? [String: Any] else {
+                logger.error("settings.json exists but isn't a JSON object; skipping hook install to avoid overwriting it")
+                return
+            }
             json = existing
         }
 
@@ -59,6 +78,7 @@ struct HookInstaller {
             ("UserPromptSubmit", withoutMatcher),
             ("PreToolUse", withMatcher),
             ("PostToolUse", withMatcher),
+            ("PostToolUseFailure", withMatcher),
             ("PermissionRequest", withMatcherAndTimeout),
             ("Notification", withMatcher),
             ("Stop", withoutMatcher),
@@ -90,11 +110,14 @@ struct HookInstaller {
 
         json["hooks"] = hooks
 
-        if let data = try? JSONSerialization.data(
-            withJSONObject: json,
-            options: [.prettyPrinted, .sortedKeys]
-        ) {
-            try? data.write(to: settingsURL)
+        do {
+            let data = try JSONSerialization.data(
+                withJSONObject: json,
+                options: [.prettyPrinted, .sortedKeys]
+            )
+            try data.write(to: settingsURL)
+        } catch {
+            logger.error("Failed to write settings.json: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -178,20 +201,11 @@ struct HookInstaller {
     }
 
     private static func detectPython() -> String {
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        process.arguments = ["python3"]
-        process.standardOutput = FileHandle.nullDevice
-        process.standardError = FileHandle.nullDevice
-
-        do {
-            try process.run()
-            process.waitUntilExit()
-            if process.terminationStatus == 0 {
-                return "python3"
-            }
-        } catch {}
-
-        return "python"
+        // Absolute path is immune to PATH differences in Claude Code's hook env.
+        if let path = ProcessExecutor.shared.runSyncOrNil("/usr/bin/which", arguments: ["python3"])?
+            .trimmingCharacters(in: .whitespacesAndNewlines), !path.isEmpty {
+            return path
+        }
+        return "python3"
     }
 }
