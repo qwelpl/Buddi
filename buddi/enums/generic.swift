@@ -23,10 +23,10 @@ public enum NotchState {
     case open
 }
 
-public enum NotchViews {
-    case buddy
-    case home
-    case shelf
+public enum NotchViews: String, CaseIterable, Defaults.Serializable {
+    case buddy = "buddy"
+    case home = "home"
+    case shelf = "shelf"
 }
 
 enum SettingsEnum {

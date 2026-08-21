@@ -340,6 +340,15 @@ struct GeneralSettings: View {
                     Text("Enable haptic feedback")
             }
             Toggle("Remember last tab", isOn: $coordinator.openLastTabByDefault)
+            Picker("Default view", selection: Binding(
+                get: { Defaults[.defaultView] },
+                set: { Defaults[.defaultView] = $0 }
+            )) {
+                Text("Buddy").tag(NotchViews.buddy)
+                Text("Widgets").tag(NotchViews.home)
+                Text("Shelf").tag(NotchViews.shelf)
+            }
+            .disabled(coordinator.openLastTabByDefault)
             if openNotchOnHover {
                 Slider(value: $minimumHoverDuration, in: 0...1, step: 0.1) {
                     HStack {
