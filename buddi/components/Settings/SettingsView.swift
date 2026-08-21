@@ -151,6 +151,7 @@ struct GeneralSettings: View {
     @Default(.automaticallySwitchDisplay) var automaticallySwitchDisplay
     @Default(.enableGestures) var enableGestures
     @Default(.openNotchOnHover) var openNotchOnHover
+    @Default(.showInDock) var showInDock
     
 
     var body: some View {
@@ -163,6 +164,13 @@ struct GeneralSettings: View {
                     Text("Show menu bar icon")
                 }
                 .tint(.effectiveAccent)
+                Defaults.Toggle(key: .showInDock) {
+                    Text("Show in Dock")
+                }
+                .onChange(of: showInDock) {
+                    NotificationCenter.default.post(
+                        name: Notification.Name.showInDockChanged, object: nil)
+                }
                 LaunchAtLogin.Toggle("Launch at login")
                 Defaults.Toggle(key: .showOnAllDisplays) {
                     Text("Show on all displays")
