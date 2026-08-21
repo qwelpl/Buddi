@@ -184,7 +184,7 @@ class BuddiViewModel: NSObject, ObservableObject {
                     }
                 }
 
-                NSApp.setActivationPolicy(.accessory)
+                NSApp.setActivationPolicy(Defaults[.showInDock] ? .regular : .accessory)
                 NSApp.deactivate()
             }
 
@@ -240,7 +240,7 @@ class BuddiViewModel: NSObject, ObservableObject {
         if !ShelfStateViewModel.shared.isEmpty && Defaults[.openShelfByDefault] {
             coordinator.currentView = .shelf
         } else if !coordinator.openLastTabByDefault {
-            coordinator.currentView = Defaults[.defaultView]
+            coordinator.currentView = .buddy
         }
     }
 

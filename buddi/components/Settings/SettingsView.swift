@@ -151,8 +151,7 @@ struct GeneralSettings: View {
     @Default(.automaticallySwitchDisplay) var automaticallySwitchDisplay
     @Default(.enableGestures) var enableGestures
     @Default(.openNotchOnHover) var openNotchOnHover
-    @Default(.showInDock) var showInDock
-    
+
 
     var body: some View {
         Form {
@@ -166,10 +165,6 @@ struct GeneralSettings: View {
                 .tint(.effectiveAccent)
                 Defaults.Toggle(key: .showInDock) {
                     Text("Show in Dock")
-                }
-                .onChange(of: showInDock) {
-                    NotificationCenter.default.post(
-                        name: Notification.Name.showInDockChanged, object: nil)
                 }
                 LaunchAtLogin.Toggle("Launch at login")
                 Defaults.Toggle(key: .showOnAllDisplays) {
@@ -340,15 +335,6 @@ struct GeneralSettings: View {
                     Text("Enable haptic feedback")
             }
             Toggle("Remember last tab", isOn: $coordinator.openLastTabByDefault)
-            Picker("Default view", selection: Binding(
-                get: { Defaults[.defaultView] },
-                set: { Defaults[.defaultView] = $0 }
-            )) {
-                Text("Buddy").tag(NotchViews.buddy)
-                Text("Widgets").tag(NotchViews.home)
-                Text("Shelf").tag(NotchViews.shelf)
-            }
-            .disabled(coordinator.openLastTabByDefault)
             if openNotchOnHover {
                 Slider(value: $minimumHoverDuration, in: 0...1, step: 0.1) {
                     HStack {

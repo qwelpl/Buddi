@@ -77,6 +77,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         return false
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        SettingsWindowController.shared.showWindow()
+        return true
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         NotificationCenter.default.removeObserver(self)
         if let observer = screenLockedObserver {
@@ -373,12 +378,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        NotificationCenter.default.addObserver(
-            forName: Notification.Name.showInDockChanged, object: nil, queue: .main
-        ) { _ in
-            NSApp.setActivationPolicy(Defaults[.showInDock] ? .regular : .accessory)
-        }
-
         // Use closure-based observers for DistributedNotificationCenter and keep tokens for removal
         screenLockedObserver = DistributedNotificationCenter.default().addObserver(
             forName: NSNotification.Name(rawValue: "com.apple.screenIsLocked"),
@@ -667,7 +666,6 @@ extension Notification.Name {
     static let showOnAllDisplaysChanged = Notification.Name("showOnAllDisplaysChanged")
     static let automaticallySwitchDisplayChanged = Notification.Name("automaticallySwitchDisplayChanged")
     static let expandedDragDetectionChanged = Notification.Name("expandedDragDetectionChanged")
-    static let showInDockChanged = Notification.Name("showInDockChanged")
 }
 
 extension CGRect: @retroactive Hashable {
